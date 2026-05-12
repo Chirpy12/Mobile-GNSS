@@ -1,14 +1,11 @@
 :root {
-    --bg-color: #f8fafc;
-    --card-bg: #ffffff;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --border: #e2e8f0;
+    --bg-color: #ffffff;
+    --text-main: #000000;
+    --text-muted: #71717a;
+    --black: #000000;
+    --white: #ffffff;
+    --border: #e4e4e7;
+    --hover-bg: #f4f4f5;
 }
 
 * {
@@ -16,113 +13,144 @@
     margin: 0;
     padding: 0;
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    letter-spacing: -0.01em;
 }
 
 body {
     background-color: var(--bg-color);
     color: var(--text-main);
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
 
 .app-container {
     max-width: 500px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 24px 16px;
 }
 
 header {
-    text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 32px;
+    border-bottom: 2px solid var(--black);
+    padding-bottom: 16px;
 }
 
-header h1 { font-size: 1.4rem; font-weight: 800; }
+header h1 { font-size: 1.5rem; font-weight: 800; text-transform: uppercase; }
 header p { font-size: 0.85rem; color: var(--text-muted); }
 
-/* Cards */
+/* Layout Elements */
 .card {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 16px;
+    background: var(--white);
+    padding: 20px 0;
     margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
 }
 
 .status-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
+
+.status-header h2 { font-size: 1rem; font-weight: 600; text-transform: uppercase; }
 
 .indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #cbd5e1;
+    width: 8px;
+    height: 8px;
+    background: var(--border);
+}
+.indicator.active { 
+    background: #3b82f6;    
+    animation: pulse 1.5s infinite;
 }
 
-.indicator.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
 
-.metrics { display: flex; flex-direction: column; gap: 8px; }
-.metric { display: flex; justify-content: space-between; font-size: 0.9rem; }
+/* Metrics */
+.metrics { display: flex; flex-direction: column; gap: 12px; }
+.metric { display: flex; justify-content: space-between; font-size: 0.95rem; }
 .label { color: var(--text-muted); }
-.value { font-weight: 700; }
-.coordinate-text { font-family: monospace; color: var(--primary); }
+.value { font-weight: 600; }
+.coordinate-text { font-family: monospace; font-size: 0.9rem; }
 
 /* Map */
 #map {
-    height: 250px;
+    height: 280px;
     width: 100%;
-    border-radius: 8px;
     z-index: 1;
+    border: 1px solid var(--border);
+    filter: grayscale(100%) contrast(1.2); /* Makes the map black and white! */
 }
 
 /* Action Area */
-.action-area { margin-bottom: 16px; }
+.action-area { margin: 24px 0; }
 
 button {
     width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    border: none;
+    padding: 16px;
+    border: 1px solid var(--black);
+    background: var(--white);
+    color: var(--black);
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
+    text-transform: uppercase;
     transition: all 0.2s ease;
 }
 
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:active { transform: scale(0.98); background: var(--primary-dark); }
-.btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+.btn-primary { background: var(--black); color: var(--white); }
+.btn-primary:active { background: var(--white); color: var(--black); }
+.btn-primary:disabled { background: var(--hover-bg); color: var(--text-muted); border-color: var(--border); cursor: not-allowed; }
 
-.btn-secondary { background: white; color: var(--text-main); border: 1px solid var(--border); margin-top: 12px; }
+.btn-secondary { margin-top: 16px; }
+.btn-secondary:active { background: var(--black); color: var(--white); }
 
-.btn-text { background: none; color: var(--danger); width: auto; padding: 4px; font-size: 0.8rem; }
+.btn-text { border: none; font-size: 0.8rem; padding: 4px; width: auto; color: var(--text-muted); }
+.btn-text:hover { color: var(--black); }
+
+/* The Countdown State */
+.btn-counting {
+    background: var(--white) !important;
+    color: var(--black) !important;
+    border: 2px dashed var(--black) !important;
+    cursor: wait !important;
+}
 
 /* Data List */
-.data-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.data-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.data-header h2 { font-size: 1rem; text-transform: uppercase; }
+
 .point-list { 
     list-style: none; 
-    max-height: 150px; 
+    max-height: 200px; 
     overflow-y: auto; 
     border: 1px solid var(--border); 
-    border-radius: 6px;
-    margin-bottom: 15px;
+    margin-bottom: 24px;
 }
 .point-list li { 
-    padding: 8px 12px; 
+    padding: 12px; 
     border-bottom: 1px solid var(--border); 
-    font-size: 0.8rem; 
+    font-size: 0.85rem; 
     display: flex; 
     justify-content: space-between; 
+    font-family: monospace;
 }
-.empty-state { color: var(--text-muted); font-style: italic; justify-content: center !important; }
+.point-list li:last-child { border-bottom: none; }
+.empty-state { color: var(--text-muted); justify-content: center !important; font-family: inherit !important;}
 
 /* Results */
-.results-area { text-align: center; padding: 15px; background: #f1f5f9; border-radius: 10px; }
-.area-value { font-size: 1.8rem; font-weight: 800; color: var(--success); } 
+.results-area { padding: 24px 0; border-bottom: 2px solid var(--black); margin-bottom: 24px; }
+.results-area h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); }
+.area-value { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.05em; margin-top: 8px; }
+small { display: block; margin-top: 8px; color: var(--text-muted); }
