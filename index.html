@@ -1,128 +1,80 @@
-:root {
-    --bg-color: #f8fafc;
-    --card-bg: #ffffff;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --border: #e2e8f0;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GNSS Accuracy Project</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>GNSS Accuracy Test</h1>
+            <p>Smartphone vs. Survey-Grade Baseline</p>
+        </header>
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Inter', -apple-system, system-ui, sans-serif;
-}
+        <main>
+            <!-- Live Status Card -->
+            <section class="card status-card">
+                <div class="status-header">
+                    <h2>Live GPS Status</h2>
+                    <span id="status-indicator" class="indicator"></span>
+                </div>
+                <div class="metrics">
+                    <div class="metric">
+                        <span class="label">Est. Accuracy</span>
+                        <span class="value" id="live-accuracy">-- m</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Coordinates</span>
+                        <span class="value coordinate-text" id="live-coords">Waiting for fix...</span>
+                    </div>
+                </div>
+            </section>
 
-body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    line-height: 1.5;
-}
+            <!-- Map Visualization Card -->
+            <section class="card map-card">
+                <div id="map"></div>
+            </section>
 
-.app-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 16px;
-}
+            <!-- Control Area -->
+            <section class="action-area">
+                <button id="btn-record" class="btn-primary" disabled>
+                    <span class="icon">📍</span> Record Point
+                </button>
+            </section>
 
-header {
-    text-align: center;
-    margin-bottom: 20px;
-}
+            <!-- Data & Results Card -->
+            <section class="card data-card">
+                <div class="data-header">
+                    <h2>Recorded Points (<span id="point-count">0</span>)</h2>
+                    <button id="btn-clear" class="btn-text">Clear</button>
+                </div>
+                
+                <ul id="point-list" class="point-list">
+                    <li class="empty-state">No points recorded yet.</li>
+                </ul>
 
-header h1 { font-size: 1.4rem; font-weight: 800; }
-header p { font-size: 0.85rem; color: var(--text-muted); }
+                <div class="results-area">
+                    <h3>Calculated Area</h3>
+                    <p class="area-value" id="area-display">0.00 m²</p>
+                    <small id="area-note">Add at least 3 points</small>
+                </div>
 
-/* Cards */
-.card {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    border: 1px solid var(--border);
-}
+                <button id="btn-export" class="btn-secondary">
+                    <span class="icon">📥</span> Export CSV for Trimble Compare
+                </button>
+            </section>
+        </main>
+    </div>
 
-.status-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #cbd5e1;
-}
-
-.indicator.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
-
-.metrics { display: flex; flex-direction: column; gap: 8px; }
-.metric { display: flex; justify-content: space-between; font-size: 0.9rem; }
-.label { color: var(--text-muted); }
-.value { font-weight: 700; }
-.coordinate-text { font-family: monospace; color: var(--primary); }
-
-/* Map */
-#map {
-    height: 250px;
-    width: 100%;
-    border-radius: 8px;
-    z-index: 1;
-}
-
-/* Action Area */
-.action-area { margin-bottom: 16px; }
-
-button {
-    width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    border: none;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s ease;
-}
-
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:active { transform: scale(0.98); background: var(--primary-dark); }
-.btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
-
-.btn-secondary { background: white; color: var(--text-main); border: 1px solid var(--border); margin-top: 12px; }
-
-.btn-text { background: none; color: var(--danger); width: auto; padding: 4px; font-size: 0.8rem; }
-
-/* Data List */
-.data-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.point-list { 
-    list-style: none; 
-    max-height: 150px; 
-    overflow-y: auto; 
-    border: 1px solid var(--border); 
-    border-radius: 6px;
-    margin-bottom: 15px;
-}
-.point-list li { 
-    padding: 8px 12px; 
-    border-bottom: 1px solid var(--border); 
-    font-size: 0.8rem; 
-    display: flex; 
-    justify-content: space-between; 
-}
-.empty-state { color: var(--text-muted); font-style: italic; justify-content: center !important; }
-
-/* Results */
-.results-area { text-align: center; padding: 15px; background: #f1f5f9; border-radius: 10px; }
-.area-value { font-size: 1.8rem; font-weight: 800; color: var(--success); } 
+    <script src="app.js"></script>
+</body>
+</html>
