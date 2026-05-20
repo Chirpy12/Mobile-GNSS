@@ -4,7 +4,79 @@ let map, currentPosMarker, polygonLayer;
 let pointMarkers = [];
 let currentPosition = null;
 let isCountingDown = false;
-let referencePoint = null; // For local XYZ calculations
+let referencePoint = null; // Reference point for local XYZ calculations
+
+// PRS92 Parameters (Philippine Transverse Mercator Zone 3)
+const PRS92_ZONE3 = {
+    lat0: 0,           // Central latitude
+    lon0: 121,         // Central meridian (Zone 3)
+    k0: 0.99995,       // Scale factor
+    fe: 500000,        // False easting
+    fn: 0,             // False northing
+    a: 6378245,        // Krassovsky ellipsoid semi-major axis
+    b: 6356863.019,    // Krassovsky ellipsoid semi-minor axis
+};
+
+// WGS84 ellipsoid parameters
+const WGS84 = {
+    a: 6378137.0,      // Earth's semi-major axis (meters)
+    b: 6356752.314245, // Earth's semi-minor axis (meters)
+};
+
+// Convert WGS84 (lat/lon) to PRS92 (PTM Zone 3)
+function wgs84ToPRS92(lat, lon) {
+    const params = PRS92_ZONE3;
+    
+    // Convert to radians
+    const latRad = lat * Math.PI / 180;
+    const lonRad = lon * Math.PI / 180;
+    const lon0Rad = params.lon0 * Math.PI / 180;
+    
+    // Calculate eccentricity
+    const e2 = 1 - (params.b * params.b) / (params.a * params.a);
+    const e = Math.sqrt(e2);
+    
+    // Calculate N (radius of curvature in prime vertical)
+    const N = params.a / Math.sqrt(1 - e2 * Math.sin(latRad) * Math.sin(latRad));
+    
+    // Calculate T and C
+    const T = Math.tan(latRad) * Math.tan(latRad);
+    const C = e2 * Math.cos(latRad) * Math.cos(latRad) / (1 - e2);
+    const A = Math.cos(latRad) * (lonRad - lon0Rad);
+    
+    // Calculate M (meridional arc)
+    const M = params.a * ((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256) * latRad
+        - (3*e2/8 + 3*e2*e2/32 - 45*e2*e2*e2/1024) * Math.sin(2*latRad)
+        + (15*e2*e2/256 - 45*e2*e2*e2/1024) * Math.sin(4*latRad)
+        - (35*e2*e2*e2/3072) * Math.sin(6*latRad));
+    
+    // Calculate UTM/PRS92 coordinates
+    const easting = params.k0 * N * (A + A*A*A/6 * (1 - T + C) + A*A*A*A*A/120 * (5 - 18*T + T*T + 72*C - 58*e2)) + params.fe;
+    const northing = params.k0 * (M + N * Math.tan(latRad) * (A*A/2 + A*A*A*A/24 * (5 - T + 9*C + 4*C*C) + A*A*A*A*A*A/720 * (61 - 58*T + T*T + 600*C - 330*e2))) + params.fn;
+    
+    return {
+        easting: easting.toFixed(2),
+        northing: northing.toFixed(2),
+        zone: 3
+    };
+}
+
+// Convert WGS84 to local XYZ (relative to first point)
+function wgs84ToLocalXYZ(lat, lon, accuracy) {
+    if (!referencePoint) {
+        return { x: 0, y: 0, z: 0 };
+    }
+    
+    // Simple Cartesian approximation (good for small areas)
+    const latDiff = (lat - referencePoint.lat) * 111320; // meters per degree latitude
+    const lonDiff = (lon - referencePoint.lon) * 111320 * Math.cos(lat * Math.PI / 180); // meters per degree longitude
+    
+    return {
+        x: lonDiff.toFixed(2),    // East
+        y: latDiff.toFixed(2),    // North
+        z: accuracy.toFixed(2)    // Height uncertainty
+    };
+}
 
 // Initialize Map
 function initMap() {
@@ -14,60 +86,6 @@ function initMap() {
         attribution: '© OpenStreetMap',
         maxZoom: 19
     }).addTo(map);
-}
-
-// Convert Lat/Lon to UTM
-function latLonToUTM(lat, lon) {
-    const k0 = 0.9996;
-    const a = 6378137.0; // WGS84 major axis
-    const e = 0.0818192; // WGS84 eccentricity
-    const e2 = e * e / (1 - e * e);
-    
-    const zoneNumber = Math.floor((lon + 180) / 6) + 1;
-    const lonOrigin = (zoneNumber - 1) * 6 - 180 + 3; // Central meridian
-    
-    const latRad = lat * Math.PI / 180;
-    const lonRad = lon * Math.PI / 180;
-    const lonOriginRad = lonOrigin * Math.PI / 180;
-    
-    const n = a / Math.sqrt(1 - e * e * Math.sin(latRad) * Math.sin(latRad));
-    const t = Math.tan(latRad) * Math.tan(latRad);
-    const c = e2 * Math.cos(latRad) * Math.cos(latRad);
-    const a2 = Math.cos(latRad) * (lonRad - lonOriginRad);
-    
-    const m = a * ((1 - e * e / 4 - 3 * e * e * e * e / 64 - 5 * e * e * e * e * e * e / 256) * latRad
-                 - (3 * e * e / 8 + 3 * e * e * e * e / 32 - 45 * e * e * e * e * e * e / 1024) * Math.sin(2 * latRad)
-                 + (15 * e * e * e * e / 256 - 45 * e * e * e * e * e * e / 1024) * Math.sin(4 * latRad)
-                 - (35 * e * e * e * e * e * e / 3072) * Math.sin(6 * latRad));
-    
-    const x = k0 * n * (a2 + (a2 * a2 * a2 / 6) * (1 - t + c)
-                      + (a2 * a2 * a2 * a2 * a2 / 120) * (5 - 18 * t + t * t + 72 * c - 58 * e2)) + 500000;
-    
-    const y = k0 * (m + n * Math.tan(latRad) * (a2 * a2 / 2
-                  + (a2 * a2 * a2 * a2 / 24) * (5 - t + 9 * c + 4 * c * c)
-                  + (a2 * a2 * a2 * a2 * a2 * a2 / 720) * (61 - 58 * t + t * t + 600 * c - 330 * e2)));
-    
-    const hemisphere = lat >= 0 ? 'N' : 'S';
-    return { x: x.toFixed(2), y: y.toFixed(2), zone: `${zoneNumber}${hemisphere}` };
-}
-
-// Convert Lat/Lon to Local XYZ (relative to first point)
-function latLonToLocalXYZ(lat, lon, accuracy) {
-    if (!referencePoint) {
-        referencePoint = { lat, lon };
-    }
-    
-    const R = 6371000; // Earth radius in meters
-    const lat1 = referencePoint.lat * Math.PI / 180;
-    const lat2 = lat * Math.PI / 180;
-    const dLat = (lat - referencePoint.lat) * Math.PI / 180;
-    const dLon = (lon - referencePoint.lon) * Math.PI / 180;
-    
-    const x = R * dLon * Math.cos((lat1 + lat2) / 2);
-    const y = R * dLat;
-    const z = accuracy; // Use accuracy as Z (height uncertainty)
-    
-    return { x: x.toFixed(3), y: y.toFixed(3), z: z.toFixed(3) };
 }
 
 // Start GPS Tracking
@@ -82,19 +100,22 @@ function startTracking() {
             currentPosition = pos;
             const { latitude, longitude, accuracy } = pos.coords;
 
-            // Calculate UTM and Local XYZ
-            const utm = latLonToUTM(latitude, longitude);
-            const localXYZ = latLonToLocalXYZ(latitude, longitude, accuracy);
+            // Set reference point on first read
+            if (!referencePoint) {
+                referencePoint = { lat: latitude, lon: longitude };
+            }
 
-            // Update UI (No colors, just pure data)
+            // Update UI with all three coordinate systems
             document.getElementById('live-accuracy').textContent = `± ${accuracy.toFixed(1)} m`;
             document.getElementById('live-coords').textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
             
-            // Show transformed coordinates if element exists
-            const transformedCoordsEl = document.getElementById('live-transformed');
-            if (transformedCoordsEl) {
-                transformedCoordsEl.innerHTML = `<strong>UTM:</strong> ${utm.zone} ${utm.x}, ${utm.y}<br><strong>Local XYZ:</strong> X: ${localXYZ.x}m, Y: ${localXYZ.y}m, Z: ${localXYZ.z}m`;
-            }
+            // Get PRS92 coordinates
+            const prs92 = wgs84ToPRS92(latitude, longitude);
+            document.getElementById('live-prs92').textContent = `E: ${prs92.easting}, N: ${prs92.northing}`;
+            
+            // Get local XYZ
+            const xyz = wgs84ToLocalXYZ(latitude, longitude, accuracy);
+            document.getElementById('live-xyz').textContent = `X: ${xyz.x}m, Y: ${xyz.y}m, Z: ±${xyz.z}m`;
             
             document.getElementById('status-indicator').classList.add('active');
             
@@ -136,19 +157,22 @@ document.getElementById('btn-record').addEventListener('click', () => {
         } else {
             clearInterval(countdownInterval);
 
-            // Calculate transforms
-            const utm = latLonToUTM(currentPosition.coords.latitude, currentPosition.coords.longitude);
-            const localXYZ = latLonToLocalXYZ(currentPosition.coords.latitude, currentPosition.coords.longitude, currentPosition.coords.accuracy);
+            // Get all coordinate systems
+            const prs92 = wgs84ToPRS92(currentPosition.coords.latitude, currentPosition.coords.longitude);
+            const xyz = wgs84ToLocalXYZ(currentPosition.coords.latitude, currentPosition.coords.longitude, currentPosition.coords.accuracy);
 
-            // Record the point with all coordinate systems
+            // Record the point
             const pt = {
                 id: points.length + 1,
                 lat: currentPosition.coords.latitude,
                 lon: currentPosition.coords.longitude,
                 acc: currentPosition.coords.accuracy,
                 time: new Date().toLocaleTimeString(),
-                utm: utm,
-                localXYZ: localXYZ
+                prs92Easting: prs92.easting,
+                prs92Northing: prs92.northing,
+                xyzX: xyz.x,
+                xyzY: xyz.y,
+                xyzZ: xyz.z
             };
 
             points.push(pt);
@@ -180,10 +204,19 @@ function updateUI() {
 
     points.forEach(p => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>PT ${p.id}</span><span style="font-size:0.75rem;color:#71717a">Lat/Lon: ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>UTM: ${p.utm.zone} ${p.utm.x}, ${p.utm.y}<br>Local XYZ: ${p.localXYZ.x}, ${p.localXYZ.y}, ${p.localXYZ.z}</span>`;
+        li.innerHTML = `
+            <div class="point-item">
+                <div class="point-header">PT ${p.id} [±${p.acc.toFixed(1)}m] ${p.time}</div>
+                <div class="point-coords">
+                    <div>WGS84: ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}</div>
+                    <div>PRS92: E ${p.prs92Easting}, N ${p.prs92Northing}</div>
+                    <div>Local XYZ: X ${p.xyzX}m, Y ${p.xyzY}m, Z ±${p.xyzZ}m</div>
+                </div>
+            </div>
+        `;
         list.appendChild(li);
 
-        // Minimalist Map Markers (Default leaflet marker replaced with black circle)
+        // Minimalist Map Markers
         const m = L.circleMarker([p.lat, p.lon], {
             radius: 5, fillColor: "#fff", color: "#000", weight: 2, fillOpacity: 1
         }).addTo(map);
@@ -203,7 +236,7 @@ function calculateArea() {
 
     const latlngs = points.map(p => [p.lat, p.lon]);
     
-    // Draw Monochome Polygon
+    // Draw Monochrome Polygon
     if (polygonLayer) polygonLayer.setLatLngs(latlngs);
     else {
         polygonLayer = L.polygon(latlngs, { 
@@ -226,17 +259,14 @@ function calculateArea() {
 // Export CSV with all coordinate systems
 document.getElementById('btn-export').addEventListener('click', () => {
     if (points.length === 0) return alert("No data");
-    
-    let csv = "PointID,Lat,Lon,Accuracy_m,Time,UTM_Zone,UTM_X,UTM_Y,Local_X_m,Local_Y_m,Local_Z_m\n";
-    points.forEach(p => {
-        csv += `${p.id},${p.lat},${p.lon},${p.acc},${p.time},${p.utm.zone},${p.utm.x},${p.utm.y},${p.localXYZ.x},${p.localXYZ.y},${p.localXYZ.z}\n`;
-    });
+    let csv = "PointID,Lat_WGS84,Lon_WGS84,Accuracy_m,Time,PRS92_Easting,PRS92_Northing,XYZ_X_m,XYZ_Y_m,XYZ_Z_m\n";
+    points.forEach(p => csv += `${p.id},${p.lat},${p.lon},${p.acc},${p.time},${p.prs92Easting},${p.prs92Northing},${p.xyzX},${p.xyzY},${p.xyzZ}\n`);
     
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', `gnss_data.csv`);
+    a.setAttribute('download', `gnss_data_${new Date().getTime()}.csv`);
     a.click();
 });
 
@@ -244,7 +274,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
 document.getElementById('btn-clear').addEventListener('click', () => {
     if (confirm("CLEAR ALL DATA?")) {
         points = [];
-        referencePoint = null;
+        referencePoint = null; // Reset reference point
         if (polygonLayer) { map.removeLayer(polygonLayer); polygonLayer = null; }
         updateUI();
     }
