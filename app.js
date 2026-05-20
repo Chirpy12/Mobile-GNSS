@@ -57,7 +57,7 @@ document.getElementById('btn-record').addEventListener('click', () => {
 
     isCountingDown = true;
     const btnRecord = document.getElementById('btn-record');
-    let timeLeft = 15;
+    let timeLeft = 30;
 
     btnRecord.classList.add('btn-counting');
     btnRecord.innerHTML = `WAIT: ${timeLeft}s`;
