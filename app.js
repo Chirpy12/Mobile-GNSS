@@ -26,34 +26,34 @@ const WGS84 = {
 // Convert WGS84 (lat/lon) to PRS92 (PTM Zone 3)
 function wgs84ToPRS92(lat, lon) {
     const params = PRS92_ZONE3;
-    
+
     // Convert to radians
     const latRad = lat * Math.PI / 180;
     const lonRad = lon * Math.PI / 180;
     const lon0Rad = params.lon0 * Math.PI / 180;
-    
+
     // Calculate eccentricity
     const e2 = 1 - (params.b * params.b) / (params.a * params.a);
     const e = Math.sqrt(e2);
-    
+
     // Calculate N (radius of curvature in prime vertical)
     const N = params.a / Math.sqrt(1 - e2 * Math.sin(latRad) * Math.sin(latRad));
-    
+
     // Calculate T and C
     const T = Math.tan(latRad) * Math.tan(latRad);
     const C = e2 * Math.cos(latRad) * Math.cos(latRad) / (1 - e2);
     const A = Math.cos(latRad) * (lonRad - lon0Rad);
-    
+
     // Calculate M (meridional arc)
     const M = params.a * ((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256) * latRad
         - (3*e2/8 + 3*e2*e2/32 - 45*e2*e2*e2/1024) * Math.sin(2*latRad)
         + (15*e2*e2/256 - 45*e2*e2*e2/1024) * Math.sin(4*latRad)
         - (35*e2*e2*e2/3072) * Math.sin(6*latRad));
-    
+
     // Calculate UTM/PRS92 coordinates
     const easting = params.k0 * N * (A + A*A*A/6 * (1 - T + C) + A*A*A*A*A/120 * (5 - 18*T + T*T + 72*C - 58*e2)) + params.fe;
     const northing = params.k0 * (M + N * Math.tan(latRad) * (A*A/2 + A*A*A*A/24 * (5 - T + 9*C + 4*C*C) + A*A*A*A*A*A/720 * (61 - 58*T + T*T + 600*C - 330*e2))) + params.fn;
-    
+
     return {
         easting: easting.toFixed(2),
         northing: northing.toFixed(2),
@@ -61,32 +61,29 @@ function wgs84ToPRS92(lat, lon) {
     };
 }
 
-// Convert WGS84 to local XYZ (relative to first point)
+// Convert WGS84 to local XYZ (relative to first RECORDED point)
 function wgs84ToLocalXYZ(lat, lon, accuracy) {
-    if (!referencePoint) {
-        return { x: 0, y: 0, z: accuracy.toFixed(2) };
+    // If no reference yet or this is the first point being recorded, set origin
+    if (!referencePoint || points.length === 0) {
+        referencePoint = { lat, lon };
+        return { x: "0.00", y: "0.00", z: "0.00" };
     }
-    
-    // If this is the reference point itself, return origin
-    if (lat === referencePoint.lat && lon === referencePoint.lon) {
-        return { x: 0, y: 0, z: accuracy.toFixed(2) };
-    }
-    
+
     // Simple Cartesian approximation (good for small areas)
     const latDiff = (lat - referencePoint.lat) * 111320; // meters per degree latitude
     const lonDiff = (lon - referencePoint.lon) * 111320 * Math.cos(lat * Math.PI / 180); // meters per degree longitude
-    
+
     return {
-        x: lonDiff.toFixed(2),    // East
-        y: latDiff.toFixed(2),    // North
-        z: accuracy.toFixed(2)    // Height uncertainty
+        x: lonDiff.toFixed(2),   // East
+        y: latDiff.toFixed(2),   // North
+        z: accuracy.toFixed(2)   // Height uncertainty
     };
 }
 
 // Initialize Map
 function initMap() {
     map = L.map('map').setView([14.6539, 121.0685], 15);
-    
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19
@@ -105,25 +102,26 @@ function startTracking() {
             currentPosition = pos;
             const { latitude, longitude, accuracy } = pos.coords;
 
-            // Set reference point on first read
-            if (!referencePoint) {
-                referencePoint = { lat: latitude, lon: longitude };
-            }
-
             // Update UI with all three coordinate systems
             document.getElementById('live-accuracy').textContent = `± ${accuracy.toFixed(1)} m`;
             document.getElementById('live-coords').textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-            
+
             // Get PRS92 coordinates
             const prs92 = wgs84ToPRS92(latitude, longitude);
             document.getElementById('live-prs92').textContent = `E: ${prs92.easting}, N: ${prs92.northing}`;
-            
-            // Get local XYZ
-            const xyz = wgs84ToLocalXYZ(latitude, longitude, accuracy);
-            document.getElementById('live-xyz').textContent = `X: ${xyz.x}m, Y: ${xyz.y}m, Z: ±${xyz.z}m`;
-            
+
+            // Live XYZ preview (relative to locked reference if it exists)
+            if (referencePoint) {
+                const latDiff = (latitude - referencePoint.lat) * 111320;
+                const lonDiff = (longitude - referencePoint.lon) * 111320 * Math.cos(latitude * Math.PI / 180);
+                document.getElementById('live-xyz').textContent =
+                    `X: ${lonDiff.toFixed(2)}m, Y: ${latDiff.toFixed(2)}m, Z: ±${accuracy.toFixed(2)}m`;
+            } else {
+                document.getElementById('live-xyz').textContent = `X: --, Y: --, Z: ±${accuracy.toFixed(2)}m`;
+            }
+
             document.getElementById('status-indicator').classList.add('active');
-            
+
             if (!isCountingDown) {
                 document.getElementById('btn-record').disabled = false;
             }
@@ -153,10 +151,10 @@ document.getElementById('btn-record').addEventListener('click', () => {
 
     btnRecord.classList.add('btn-counting');
     btnRecord.innerHTML = `WAIT: ${timeLeft}s`;
-    
+
     const countdownInterval = setInterval(() => {
         timeLeft--;
-        
+
         if (timeLeft > 0) {
             btnRecord.innerHTML = `WAIT: ${timeLeft}s`;
         } else {
@@ -164,6 +162,7 @@ document.getElementById('btn-record').addEventListener('click', () => {
 
             // Get all coordinate systems
             const prs92 = wgs84ToPRS92(currentPosition.coords.latitude, currentPosition.coords.longitude);
+            // wgs84ToLocalXYZ handles setting referencePoint on first call (points.length === 0)
             const xyz = wgs84ToLocalXYZ(currentPosition.coords.latitude, currentPosition.coords.longitude, currentPosition.coords.accuracy);
 
             // Record the point
@@ -187,8 +186,8 @@ document.getElementById('btn-record').addEventListener('click', () => {
             btnRecord.classList.remove('btn-counting');
             btnRecord.innerHTML = `RECORD POINT`;
             isCountingDown = false;
-            
-            if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]); 
+
+            if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
         }
     }, 1000);
 });
@@ -240,15 +239,15 @@ function calculateArea() {
     }
 
     const latlngs = points.map(p => [p.lat, p.lon]);
-    
+
     // Draw Monochrome Polygon
     if (polygonLayer) polygonLayer.setLatLngs(latlngs);
     else {
-        polygonLayer = L.polygon(latlngs, { 
-            color: '#000', 
-            weight: 2, 
+        polygonLayer = L.polygon(latlngs, {
+            color: '#000',
+            weight: 2,
             fillColor: '#000',
-            fillOpacity: 0.1 
+            fillOpacity: 0.1
         }).addTo(map);
     }
     map.fitBounds(polygonLayer.getBounds(), { padding: [20, 20] });
@@ -266,7 +265,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
     if (points.length === 0) return alert("No data");
     let csv = "PointID,Lat_WGS84,Lon_WGS84,Accuracy_m,Time,PRS92_Easting,PRS92_Northing,XYZ_X_m,XYZ_Y_m,XYZ_Z_m\n";
     points.forEach(p => csv += `${p.id},${p.lat},${p.lon},${p.acc},${p.time},${p.prs92Easting},${p.prs92Northing},${p.xyzX},${p.xyzY},${p.xyzZ}\n`);
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
