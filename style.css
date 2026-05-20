@@ -79,10 +79,10 @@ header p { font-size: 0.85rem; color: var(--text-muted); }
 
 /* Metrics */
 .metrics { display: flex; flex-direction: column; gap: 12px; }
-.metric { display: flex; justify-content: space-between; font-size: 0.95rem; }
-.label { color: var(--text-muted); }
-.value { font-weight: 600; }
-.coordinate-text { font-family: monospace; font-size: 0.9rem; }
+.metric { display: flex; justify-content: space-between; font-size: 0.95rem; gap: 8px; }
+.label { color: var(--text-muted); font-weight: 500; min-width: 120px; }
+.value { font-weight: 600; flex: 1; text-align: right; }
+.coordinate-text { font-family: monospace; font-size: 0.85rem; word-break: break-all; }
 
 /* Map */
 #map {
@@ -133,21 +133,52 @@ button {
 
 .point-list { 
     list-style: none; 
-    max-height: 200px; 
+    max-height: 300px; 
     overflow-y: auto; 
     border: 1px solid var(--border); 
     margin-bottom: 24px;
 }
+
 .point-list li { 
     padding: 12px; 
     border-bottom: 1px solid var(--border); 
     font-size: 0.85rem; 
     display: flex; 
-    justify-content: space-between; 
+    justify-content: space-between;
+}
+
+.point-list li:last-child { border-bottom: none; }
+
+.point-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     font-family: monospace;
 }
-.point-list li:last-child { border-bottom: none; }
-.empty-state { color: var(--text-muted); justify-content: center !important; font-family: inherit !important;}
+
+.point-header {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.point-coords {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.point-coords div {
+    word-break: break-all;
+}
+
+.empty-state { 
+    color: var(--text-muted); 
+    justify-content: center !important; 
+    font-family: inherit !important;
+}
 
 /* Results */
 .results-area { padding: 24px 0; border-bottom: 2px solid var(--black); margin-bottom: 24px; }
