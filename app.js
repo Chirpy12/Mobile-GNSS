@@ -64,7 +64,12 @@ function wgs84ToPRS92(lat, lon) {
 // Convert WGS84 to local XYZ (relative to first point)
 function wgs84ToLocalXYZ(lat, lon, accuracy) {
     if (!referencePoint) {
-        return { x: 0, y: 0, z: 0 };
+        return { x: 0, y: 0, z: accuracy.toFixed(2) };
+    }
+    
+    // If this is the reference point itself, return origin
+    if (lat === referencePoint.lat && lon === referencePoint.lon) {
+        return { x: 0, y: 0, z: accuracy.toFixed(2) };
     }
     
     // Simple Cartesian approximation (good for small areas)
