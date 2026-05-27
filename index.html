@@ -4,22 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mobile GNSS Area Calculator</title>
-    
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Libraries -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 </head>
 <body>
+
+    <!-- Toast notification -->
+    <div id="toast"></div>
+
     <div class="app-container">
         <header>
             <h1>Mobile GNSS Area Calculator</h1>
             <p>WGS84 / PRS92 / Local XYZ</p>
         </header>
-
         <main>
             <!-- Live Status Card -->
             <section class="card status-card">
@@ -31,6 +30,10 @@
                     <div class="metric">
                         <span class="label">Est. Accuracy</span>
                         <span class="value" id="live-accuracy">-- m</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Est. HDOP</span>
+                        <span class="value coordinate-text" id="live-hdop">Waiting for fix...</span>
                     </div>
                     <div class="metric">
                         <span class="label">WGS84 (Lat, Lon)</span>
@@ -47,25 +50,25 @@
                 </div>
             </section>
 
-            <!-- Map Visualization Card -->
+            <!-- Map -->
             <section class="card map-card">
                 <div id="map"></div>
             </section>
 
-            <!-- Control Area -->
+            <!-- Record -->
             <section class="action-area">
                 <button id="btn-record" class="btn-primary" disabled>
                     Record Point
                 </button>
             </section>
 
-            <!-- Data & Results Card -->
+            <!-- Data & Results -->
             <section class="card data-card">
                 <div class="data-header">
                     <h2>Recorded Points (<span id="point-count">0</span>)</h2>
                     <button id="btn-clear" class="btn-text">Clear</button>
                 </div>
-                
+
                 <ul id="point-list" class="point-list">
                     <li class="empty-state">No points recorded yet.</li>
                 </ul>
@@ -77,12 +80,11 @@
                 </div>
 
                 <button id="btn-export" class="btn-secondary">
-                     Export as CSV
+                    Export as CSV
                 </button>
             </section>
         </main>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
