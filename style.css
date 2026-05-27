@@ -90,7 +90,7 @@ header p { font-size: 0.85rem; color: var(--text-muted); }
     width: 100%;
     z-index: 1;
     border: 1px solid var(--border);
-    filter: grayscale(100%) contrast(1.2); /* Makes the map black and white! */
+    filter: grayscale(100%) contrast(1.2);
 }
 
 /* Action Area */
@@ -185,3 +185,29 @@ button {
 .results-area h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); }
 .area-value { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.05em; margin-top: 8px; }
 small { display: block; margin-top: 8px; color: var(--text-muted); }
+
+/* Toast Notification */
+#toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--black);
+    color: var(--white);
+    padding: 10px 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 9999;
+    max-width: 90vw;
+    white-space: normal;
+    text-align: center;
+}
+
+#toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
