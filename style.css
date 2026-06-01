@@ -66,15 +66,9 @@ header p { font-size: 0.85rem; color: var(--text-muted); }
 }
 
 @keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-    }
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
 
 /* Metrics */
@@ -210,4 +204,27 @@ small { display: block; margin-top: 8px; color: var(--text-muted); }
 #toast.visible {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+}
+
+/* ADDED: Point Controls */
+.point-controls button {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.point-controls button:hover {
+    color: var(--black);
+    border-color: var(--black);
+}
+
+.point-controls button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: var(--border);
 }
