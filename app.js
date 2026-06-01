@@ -344,6 +344,43 @@ document.getElementById('btn-record').addEventListener('click', () => {
 });
 
 // ============================================================
+// Manage Points (Move & Delete)
+// ============================================================
+window.movePoint = function(index, direction) {
+    if (index + direction < 0 || index + direction >= points.length) return;
+    
+    // Swap the points
+    const temp = points[index];
+    points[index] = points[index + direction];
+    points[index + direction] = temp;
+    
+    // Re-assign IDs so they remain sequential (1, 2, 3...)
+    points.forEach((p, i) => p.id = i + 1);
+    
+    saveSession();
+    updateUI();
+};
+
+window.deletePoint = function(index) {
+    if (confirm("Remove this point from the calculation?")) {
+        points.splice(index, 1);
+        
+        // Re-assign IDs
+        points.forEach((p, i) => p.id = i + 1);
+        
+        // Reset reference point if the first point is deleted
+        if (points.length > 0) {
+            referencePoint = { lat: points[0].lat, lon: points[0].lon, alt: points[0].alt };
+        } else {
+            referencePoint = null;
+        }
+
+        saveSession();
+        updateUI();
+    }
+};
+
+// ============================================================
 // UI Update
 // ============================================================
 function updateUI() {
@@ -363,11 +400,18 @@ function updateUI() {
     pointMarkers.forEach(m => map.removeLayer(m));
     pointMarkers = [];
 
-    points.forEach(p => {
+    points.forEach((p, index) => {
         const li = document.createElement('li');
         li.innerHTML = `
             <div class="point-item">
-                <div class="point-header">PT ${p.id} [±${p.acc.toFixed(1)}m | HDOP ${p.hdop.toFixed(2)}] ${p.time}</div>
+                <div class="point-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>PT ${p.id} [±${p.acc.toFixed(1)}m | HDOP ${p.hdop.toFixed(2)}] ${p.time}</span>
+                    <div class="point-controls">
+                        <button onclick="movePoint(${index}, -1)" ${index === 0 ? 'disabled' : ''} title="Move Up">▲</button>
+                        <button onclick="movePoint(${index}, 1)" ${index === points.length - 1 ? 'disabled' : ''} title="Move Down">▼</button>
+                        <button onclick="deletePoint(${index})" title="Delete Point">❌</button>
+                    </div>
+                </div>
                 <div class="point-coords">
                     <div>WGS84: ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}</div>
                     <div>PRS92: E ${p.prs92Easting}, N ${p.prs92Northing}</div>
@@ -425,6 +469,68 @@ document.getElementById('btn-export').addEventListener('click', () => {
     a.setAttribute('href', url);
     a.setAttribute('download', `gnss_data_${new Date().getTime()}.csv`);
     a.click();
+});
+
+// ============================================================
+// CSV Import
+// ============================================================
+document.getElementById('btn-import').addEventListener('click', () => {
+    document.getElementById('file-import').click();
+});
+
+document.getElementById('file-import').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const text = event.target.result;
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            if (lines.length <= 1) throw new Error("File is empty or missing data.");
+
+            points = [];
+            
+            // Loop through data, skipping the header
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length < 12) continue; // Skip malformed rows
+                
+                points.push({
+                    id: parseInt(cols[0]),
+                    lat: parseFloat(cols[1]),
+                    lon: parseFloat(cols[2]),
+                    alt: cols[3] === "N/A" ? null : parseFloat(cols[3]),
+                    acc: parseFloat(cols[4]),
+                    hdop: parseFloat(cols[5]),
+                    time: cols[6],
+                    prs92Easting: cols[7],
+                    prs92Northing: cols[8],
+                    xyzX: cols[9],
+                    xyzY: cols[10],
+                    xyzZ: cols[11]
+                });
+            }
+
+            // Restore reference point from the first imported point
+            if (points.length > 0) {
+                referencePoint = { lat: points[0].lat, lon: points[0].lon, alt: points[0].alt };
+            } else {
+                referencePoint = null;
+            }
+
+            saveSession();
+            updateUI();
+            showToast(`Successfully imported ${points.length} points.`);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to parse CSV. Ensure it is a valid format exported from this app.");
+        }
+    };
+    
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
 });
 
 // ============================================================
