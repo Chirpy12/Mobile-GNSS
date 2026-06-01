@@ -11,7 +11,6 @@
 </head>
 <body>
 
-    <!-- Toast notification -->
     <div id="toast"></div>
 
     <div class="app-container">
@@ -20,7 +19,6 @@
             <p>WGS84 / PRS92 / Local XYZ</p>
         </header>
         <main>
-            <!-- Live Status Card -->
             <section class="card status-card">
                 <div class="status-header">
                     <h2>Live GPS Status</h2>
@@ -50,19 +48,16 @@
                 </div>
             </section>
 
-            <!-- Map -->
             <section class="card map-card">
                 <div id="map"></div>
             </section>
 
-            <!-- Record -->
             <section class="action-area">
                 <button id="btn-record" class="btn-primary" disabled>
                     Record Point
                 </button>
             </section>
 
-            <!-- Data & Results -->
             <section class="card data-card">
                 <div class="data-header">
                     <h2>Recorded Points (<span id="point-count">0</span>)</h2>
@@ -79,9 +74,11 @@
                     <small id="area-note">Add at least 3 points</small>
                 </div>
 
-                <button id="btn-export" class="btn-secondary">
-                    Export as CSV
-                </button>
+                <div class="action-group" style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button id="btn-export" class="btn-secondary" style="margin-top: 0; flex: 1;">Export CSV</button>
+                    <button id="btn-import" class="btn-secondary" style="margin-top: 0; flex: 1;">Import CSV</button>
+                    <input type="file" id="file-import" accept=".csv" style="display: none;">
+                </div>
             </section>
         </main>
     </div>
